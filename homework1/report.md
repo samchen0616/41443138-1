@@ -1,6 +1,7 @@
 # 41443138
 作業一
-## problem1的解題說明
+## problem1
+### 解題說明
 這題要計算 Ackermann 函數，而且要用遞迴以及非遞迴來做：
 
  Ackermann 函數的規則是：
@@ -30,3 +31,9 @@ int Ackermann(int m, int n)
         return Ackermann(m - 1, Ackermann(m, n - 1));
     }
 }
+## 效能分析
+
+## 測試與驗證
+
+## 申論及開發報告
+
