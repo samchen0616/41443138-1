@@ -31,7 +31,10 @@ int Ackermann(int m, int n)
         return Ackermann(m - 1, Ackermann(m, n - 1));
     }
 }
+```
 ## 效能分析
+- 時間複雜度： 程式的時間複雜度為 \(O(A(m,n))\).
+- 空間複雜度： 程式的空間複雜度為 O(A(m,n)).
 
 ## 測試與驗證
 
