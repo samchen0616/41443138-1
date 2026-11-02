@@ -1,71 +1,375 @@
 # 41443138
 作業一
- 
-## 解題說明
-這題要計算 Ackermann 函數，而且要用遞迴以及非遞迴來做：
 
- Ackermann 函數的規則是：
- - 當 `m = 0` 時，答案是 `n + 1`。
- - 當 `m > 0` 且 `n = 0` 時，計算 `A(m - 1, 1)`。
- - 其他情況計算 `A(m - 1, A(m, n - 1))`。
+## 解題說明
+
+### 解題策略
+使用 Term 類別儲存多項式的每一項資料，包含：
+
+- `coef`：表示多項式的係數。
+- `exp`：表示多項式的次方。
+
 ## 程式實作
 
 以下為主要程式碼
 
 ```cpp
 #include <iostream>
+#include <cmath>
 using namespace std;
 
-int Ackermann(int m, int n)
-{
-    if (m == 0)
-    {
-        return n + 1;
+class Polynomial;
+
+class Term {
+
+    friend class Polynomial;
+    friend istream& operator>>(istream& in, Polynomial& p);
+    friend ostream& operator<<(ostream& out, const Polynomial& p);
+
+private:
+
+    float coef;
+    int exp;
+
+};
+
+class Polynomial {
+
+private:
+
+    Term* termArray;
+
+    int capacity;
+
+    int terms;
+
+public:
+
+    Polynomial() : capacity(2), terms(0) {
+
+        termArray = new Term[capacity];
     }
-    else if (n == 0)
-    {
-        return Ackermann(m - 1, 1);
+
+   
+    Polynomial(const Polynomial& b) {
+
+        capacity = b.capacity;
+        terms = b.terms;
+
+        termArray = new Term[capacity];
+
+        for (int i = 0; i < terms; i++) {
+            termArray[i] = b.termArray[i];
+        }
     }
-    else
-    {
-        return Ackermann(m - 1, Ackermann(m, n - 1));
+
+   
+    Polynomial& operator=(const Polynomial& b) {
+
+        if (this != &b) {
+
+            delete[] termArray;
+
+            capacity = b.capacity;
+            terms = b.terms;
+
+            termArray = new Term[capacity];
+
+            for (int i = 0; i < terms; i++) {
+                termArray[i] = b.termArray[i];
+            }
+        }
+
+        return *this;
     }
+
+  
+    ~Polynomial() {
+
+        delete[] termArray;
+    }
+
+    void newTerm(const float theCoef, const int theExp);
+
+    Polynomial Add(const Polynomial& b);
+
+    Polynomial Mult(const Polynomial& b);
+
+    float Eval(float x);
+
+  
+    friend istream& operator>>(istream& in, Polynomial& p);
+
+    friend ostream& operator<<(ostream& out, const Polynomial& p);
+
+};
+
+
+
+void Polynomial::newTerm(const float theCoef, const int theExp) {
+
+    if (theCoef == 0) return;
+
+    int i = 0;
+
+    
+    while (i < terms && termArray[i].exp > theExp) {
+        i++;
+    }
+
+
+    if (i < terms && termArray[i].exp == theExp) {
+
+        termArray[i].coef += theCoef;
+
+        if (termArray[i].coef == 0) {
+
+            for (int j = i; j < terms - 1; j++) {
+                termArray[j] = termArray[j + 1];
+            }
+
+            terms--;
+        }
+
+        return;
+    }
+
+    if (terms == capacity) {
+
+        capacity *= 2;
+
+        Term* temp = new Term[capacity];
+
+        for (int j = 0; j < terms; j++) {
+            temp[j] = termArray[j];
+        }
+
+        delete[] termArray;
+
+        termArray = temp;
+    }
+
+   
+    for (int j = terms; j > i; j--) {
+        termArray[j] = termArray[j - 1];
+    }
+
+    termArray[i].coef = theCoef;
+
+    termArray[i].exp = theExp;
+
+    terms++;
 }
 
-#include <iostream>
-#include <stack>
 
-using namespace std;
 
-int AckermannNonRecursive(int m, int n)
-{
-    stack<int> s;
+Polynomial Polynomial::Add(const Polynomial& b) {
 
-    s.push(m);
+    Polynomial c;
 
-    while (!s.empty())
-    {
-        m = s.top();
-        s.pop();
+    int aPos = 0, bPos = 0;
 
-        if (m == 0)
-        {
-            n = n + 1;
+    while ((aPos < terms) && (bPos < b.terms))
+
+        if (termArray[aPos].exp == b.termArray[bPos].exp) {
+
+            float t = termArray[aPos].coef + b.termArray[bPos].coef;
+
+            if (t) c.newTerm(t, termArray[aPos].exp);
+
+            aPos++;
+            bPos++;
+
         }
-        else if (n == 0)
-        {
-            n = 1;
-            s.push(m - 1);
+
+        else if (termArray[aPos].exp < b.termArray[bPos].exp) {
+
+            c.newTerm(b.termArray[bPos].coef,
+                b.termArray[bPos].exp);
+
+            bPos++;
+
         }
-        else
-        {
-            s.push(m - 1);
-            s.push(m);
-            n = n - 1;
+
+        else {
+
+            c.newTerm(termArray[aPos].coef,
+                termArray[aPos].exp);
+
+            aPos++;
+
+        }
+
+    for (; aPos < terms; aPos++)
+
+        c.newTerm(termArray[aPos].coef,
+            termArray[aPos].exp);
+
+    for (; bPos < b.terms; bPos++)
+
+        c.newTerm(b.termArray[bPos].coef,
+            b.termArray[bPos].exp);
+
+    return c;
+
+}
+
+
+
+Polynomial Polynomial::Mult(const Polynomial& b) {
+
+    Polynomial c;
+
+    if (terms == 0 || b.terms == 0) {
+
+        return c;
+    }
+
+    for (int i = 0; i < terms; i++) {
+
+        Polynomial temp;
+
+        for (int j = 0; j < b.terms; j++) {
+
+            float coef = termArray[i].coef * b.termArray[j].coef;
+
+            int exp = termArray[i].exp + b.termArray[j].exp;
+
+            if (coef != 0) {
+
+                temp.newTerm(coef, exp);
+            }
+        }
+
+        c = c.Add(temp);
+    }
+
+    return c;
+}
+
+
+float Polynomial::Eval(float x) {
+
+    float result = 0;
+
+    for (int i = 0; i < terms; i++) {
+
+        result += termArray[i].coef *
+            pow(x, termArray[i].exp);
+    }
+
+    return result;
+}
+
+
+
+istream& operator>>(istream& in, Polynomial& p) {
+
+    int n;
+
+    in >> n;
+
+    p.terms = 0;
+
+    for (int i = 0; i < n; i++) {
+
+        float coef;
+        int exp;
+
+        in >> coef >> exp;
+
+        p.newTerm(coef, exp);
+    }
+
+    return in;
+}
+
+
+
+ostream& operator<<(ostream& out, const Polynomial& p) {
+
+    if (p.terms == 0) {
+
+        out << "0";
+
+        return out;
+    }
+
+    for (int i = 0; i < p.terms; i++) {
+
+        float coef = p.termArray[i].coef;
+
+        int exp = p.termArray[i].exp;
+
+        if (i > 0) {
+
+            if (coef > 0)
+                out << " + ";
+            else
+                out << " - ";
+        }
+
+        else if (coef < 0) {
+
+            out << "-";
+        }
+
+        float absCoef = fabs(coef);
+
+        if (exp == 0 || absCoef != 1) {
+
+            out << absCoef;
+        }
+
+        if (exp > 0) {
+
+            out << "x";
+
+            if (exp > 1) {
+
+                out << "^" << exp;
+            }
         }
     }
 
-    return n;
+    return out;
+}
+
+
+
+int main() {
+
+    Polynomial P1, P2, FINISH;
+
+    float x;
+
+    cout << "輸入第一個多項式: ";
+    cin >> P1;
+
+    cout << "輸入第二個多項式): ";
+    cin >> P2;
+
+    cout << "\nP1 = " << P1 << endl;
+
+    cout << "P2 = " << P2 << endl;
+
+  
+    FINISH = P1.Add(P2);
+
+    cout << "\n加法 = " << FINISH << endl;
+
+ 
+    FINISH = P1.Mult(P2);
+
+    cout << "乘法 = " << FINISH << endl;
+
+   
+    cout << "\n輸入 x: ";
+    cin >> x;
+
+    cout << "P1(" << x << ") = " << P1.Eval(x) << endl;
+
+    return 0;
 }
 
 ```
@@ -96,88 +400,3 @@ Non-recursive: 3
 而是利用 Stack 來模擬遞迴的執行過程。由於 Stack 具有**後進先出（LIFO）**的特性，
 可以將尚未完成的計算工作暫時保存，並依照正確的順序取出處理，因此能夠模擬原本遞迴函式的執行方式。
 
-## problem2
-
-## 解題說明
-這題要計算一個集合的 Powerset（冪集），也就是找出這個集合所有可能的子集合，而且要使用遞迴來完成。
-
-例如：
-
-S = {1, 2, 3}
-
-每一個元素都有「選擇」和「不選擇」兩種情況：
-
-不選擇目前的元素。
-選擇目前的元素。
-
-透過遞迴將每個元素分成這兩種情況，就可以找出所有可能的子集合。
-
-當所有元素都處理完時，就將目前的結果輸出。
-
-因為每個元素都有 2 種選擇，所以如果集合有 n 個元素，總共有 \(2^n\) 個子集合
-## 程式實作
-```cpp
-#include <iostream>
-#include <vector>
-using namespace std;
-
-void powerset(vector<int> S, int index, vector<int> result)
-{
-
-    if (index == S.size())
-    {
-        cout << "{ ";
-
-        for (int i = 0; i < result.size(); i++)
-        {
-            cout << result[i] << " ";
-        }
-
-        cout << "}" << endl;
-
-        return;
-    }
-
-
-    powerset(S, index + 1, result);
-
-
-    result.push_back(S[index]);
-
-    powerset(S, index + 1, result);
-}
-```
-## 效能分析
-- 時間複雜度：程式需要產生所有子集合，因此時間複雜度約為 \(O(2^n)\)。
-- 空間複雜度：遞迴過程最多會有 n 層，因此空間複雜度為 \(O(n)\)。
-
-## 測試與驗證
-{ }
-{ 3 }
-{ 2 }
-{ 2 3 }
-{ 1 }
-{ 1 3 }
-{ 1 2 }
-{ 1 2 3 }
-### 編譯結果
-```shell
-g++ src/problem2.cpp --std=c++21 -o problem2.exe
-./problem2.exe
-{ }
-{ 3 }
-{ 2 }
-{ 2 3 }
-{ 1 }
-{ 1 3 }
-{ 1 2 }
-{ 1 2 3 }
-```
-## 申論及開發報告
-這題是利用遞迴的方式來產生集合的所有子集合。每處理一個元素時，
-都會分成「選擇」和「不選擇」兩種情況，再繼續處理下一個元素。
-當所有元素都處理完成後，就會將目前產生的子集合輸出，因為每個元素都有兩種選擇，
-所以一個有 n 個元素的集合，最後會產生 \(2^n\) 個子集合，
-在開發過程中，我使用 vector 來存放原本的集合以及目前產生的子集合，並利用 index 判斷目前處理到哪一個元素，
-透過遞迴不斷處理「選擇」與「不選擇」的情況，最後成功產生所有可能的子集合，
-透過這次作業，我更加了解遞迴的使用方式，也了解到冪集的數量會隨著集合元素增加而快速增加。
